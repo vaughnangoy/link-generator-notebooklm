@@ -29,7 +29,12 @@ export default function Preview({ link }: PreviewProps) {
         <div className="preview">
           <div className="preview-header">
             <span className="preview-title">{link.title}</span>
-            <a href={link.url} target="_blank" rel="noopener noreferrer" className="preview-open">
+            <a
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="preview-open"
+            >
               Open in browser ↗
             </a>
           </div>
@@ -49,7 +54,12 @@ export default function Preview({ link }: PreviewProps) {
     <div className="preview">
       <div className="preview-header">
         <span className="preview-title">{link.title}</span>
-        <a href={link.url} target="_blank" rel="noopener noreferrer" className="preview-open">
+        <a
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="preview-open"
+        >
           Open in browser ↗
         </a>
       </div>

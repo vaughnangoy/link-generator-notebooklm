@@ -31,14 +31,12 @@ export default function LinkList({
     <div className="link-list">
       <div className="link-list-header">
         <label className="select-all">
-          <input
-            type="checkbox"
-            checked={allSelected}
-            onChange={onToggleAll}
-          />
+          <input type="checkbox" checked={allSelected} onChange={onToggleAll} />
           Select all
         </label>
-        <span>{selected.size} of {links.length} selected</span>
+        <span>
+          {selected.size} of {links.length} selected
+        </span>
       </div>
       <ul>
         {links.map((link, i) => (

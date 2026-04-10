@@ -61,7 +61,8 @@ function App() {
     .map((i) => links[i]?.url)
     .filter(Boolean);
 
-  const previewLink = previewIndex !== null ? links[previewIndex] ?? null : null;
+  const previewLink =
+    previewIndex !== null ? (links[previewIndex] ?? null) : null;
 
   return (
     <div className="app">
