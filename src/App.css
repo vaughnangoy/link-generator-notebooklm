@@ -1,0 +1,357 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background-color: #f5f5f7;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ── App layout ── */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Top bar ── */
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #ddd;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.url-input {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+}
+
+.url-input input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.url-input input:focus {
+  border-color: #007aff;
+}
+
+.url-input button,
+.copy-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.url-input button {
+  background: #007aff;
+  color: #fff;
+}
+
+.url-input button:hover:not(:disabled) {
+  background: #005ec4;
+}
+
+.url-input button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.copy-button {
+  background: #34c759;
+  color: #fff;
+}
+
+.copy-button:hover:not(:disabled) {
+  background: #2aa048;
+}
+
+.copy-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Error banner ── */
+.error-banner {
+  padding: 8px 16px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* ── Main content split ── */
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 40%;
+  min-width: 300px;
+  max-width: 500px;
+  border-right: 1px solid #ddd;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.preview-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+/* ── Link list ── */
+.link-list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.link-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: #888;
+  border-bottom: 1px solid #eee;
+  flex-shrink: 0;
+}
+
+.select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.select-all input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.link-list ul {
+  list-style: none;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.link-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.15s;
+}
+
+.link-list li:hover {
+  background: #f0f4ff;
+}
+
+.link-list li.active {
+  background: #e8f0fe;
+}
+
+.link-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.link-title {
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  color: #1a1a1a;
+  padding: 4px 0;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.link-title:hover {
+  color: #007aff;
+}
+
+.link-type-badge {
+  margin-right: 4px;
+  font-size: 12px;
+}
+
+.link-list-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #999;
+  padding: 24px;
+  text-align: center;
+}
+
+/* ── Preview ── */
+.preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+  flex-shrink: 0;
+}
+
+.preview-title {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.preview-open {
+  font-size: 12px;
+  color: #007aff;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.preview-open:hover {
+  text-decoration: underline;
+}
+
+.preview-iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #fff;
+}
+
+.preview-iframe.youtube {
+  aspect-ratio: 16 / 9;
+  max-height: 60%;
+  flex: none;
+}
+
+.preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #999;
+  padding: 24px;
+  text-align: center;
+}
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #f0f0f0;
+    background-color: #1c1c1e;
+  }
+
+  .top-bar {
+    background: #2c2c2e;
+    border-bottom-color: #3a3a3c;
+  }
+
+  .url-input input {
+    background: #1c1c1e;
+    border-color: #3a3a3c;
+    color: #f0f0f0;
+  }
+
+  .url-input input:focus {
+    border-color: #0a84ff;
+  }
+
+  .sidebar {
+    background: #2c2c2e;
+    border-right-color: #3a3a3c;
+  }
+
+  .preview-panel {
+    background: #1c1c1e;
+  }
+
+  .link-list-header {
+    border-bottom-color: #3a3a3c;
+  }
+
+  .link-list li {
+    border-bottom-color: #3a3a3c;
+  }
+
+  .link-list li:hover {
+    background: #3a3a3c;
+  }
+
+  .link-list li.active {
+    background: #2a3a50;
+  }
+
+  .link-title {
+    color: #f0f0f0;
+  }
+
+  .link-title:hover {
+    color: #0a84ff;
+  }
+
+  .preview-header {
+    background: #2c2c2e;
+    border-bottom-color: #3a3a3c;
+  }
+
+  .preview-open {
+    color: #0a84ff;
+  }
+
+  .link-list-empty,
+  .preview-empty {
+    color: #666;
+  }
+}
