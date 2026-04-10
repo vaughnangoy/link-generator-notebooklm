@@ -100,11 +100,15 @@ export default function HistoryList({
         </label>
         <div className="history-header-right">
           {totalSelectedUrls > 0 && (
-            <span>{totalSelectedUrls} URL{totalSelectedUrls !== 1 ? "s" : ""} selected</span>
+            <span>
+              {totalSelectedUrls} URL{totalSelectedUrls !== 1 ? "s" : ""}{" "}
+              selected
+            </span>
           )}
           {selectedMasters.size > 0 && (
             <button className="history-delete-btn" onClick={onDelete}>
-              Delete {selectedMasters.size} entr{selectedMasters.size !== 1 ? "ies" : "y"}
+              Delete {selectedMasters.size} entr
+              {selectedMasters.size !== 1 ? "ies" : "y"}
             </button>
           )}
         </div>
@@ -138,9 +142,13 @@ export default function HistoryList({
                   <span className="history-item-url">{entry.url}</span>
                   <span className="history-item-meta">
                     <span className="history-item-count">
-                      {entry.children.length} link{entry.children.length !== 1 ? "s" : ""}
+                      {entry.children.length} link
+                      {entry.children.length !== 1 ? "s" : ""}
                     </span>
-                    <span className="history-item-date" title={formatFullDate(entry.timestamp)}>
+                    <span
+                      className="history-item-date"
+                      title={formatFullDate(entry.timestamp)}
+                    >
                       {formatRelativeTime(entry.timestamp)}
                     </span>
                   </span>

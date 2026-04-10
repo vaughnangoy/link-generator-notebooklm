@@ -25,7 +25,9 @@ function App() {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
-  const [checkedUrls, setCheckedUrls] = useState<Map<string, boolean>>(new Map());
+  const [checkedUrls, setCheckedUrls] = useState<Map<string, boolean>>(
+    new Map(),
+  );
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("links");
   const [status, setStatus] = useState<ProgressStatus | null>(null);
@@ -33,8 +35,12 @@ function App() {
 
   // History state
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [selectedMasters, setSelectedMasters] = useState<Set<number>>(new Set());
-  const [selectedChildren, setSelectedChildren] = useState<Map<number, Set<number>>>(new Map());
+  const [selectedMasters, setSelectedMasters] = useState<Set<number>>(
+    new Set(),
+  );
+  const [selectedChildren, setSelectedChildren] = useState<
+    Map<number, Set<number>>
+  >(new Map());
 
   const refreshHistory = useCallback(async () => {
     try {
@@ -65,30 +71,41 @@ function App() {
     unlistenRefs.current = [];
 
     // Listen for progress events
-    const unlistenProgress = await listen<ProgressStatus>("extract-progress", (event) => {
-      setStatus(event.payload);
-    });
+    const unlistenProgress = await listen<ProgressStatus>(
+      "extract-progress",
+      (event) => {
+        setStatus(event.payload);
+      },
+    );
     unlistenRefs.current.push(unlistenProgress);
 
     // Listen for per-link validation results
-    const unlistenValidated = await listen<{ url: string; valid: boolean }>("link-validated", (event) => {
-      setCheckedUrls((prev) => new Map(prev).set(event.payload.url, event.payload.valid));
-    });
+    const unlistenValidated = await listen<{ url: string; valid: boolean }>(
+      "link-validated",
+      (event) => {
+        setCheckedUrls((prev) =>
+          new Map(prev).set(event.payload.url, event.payload.valid),
+        );
+      },
+    );
     unlistenRefs.current.push(unlistenValidated);
 
     // Listen for validation-done: finalize and save to history
-    const unlistenDone = await listen<{ valid_links: LinkItem[] }>("validation-done", (event) => {
-      setLinks(event.payload.valid_links);
-      setCheckedUrls(new Map());
-      setValidating(false);
-      setSelected(new Set());
-      refreshHistory();
-      // Clean up listeners
-      for (const unlisten of unlistenRefs.current) unlisten();
-      unlistenRefs.current = [];
-      // Clear active status so idle info shows
-      setStatus(null);
-    });
+    const unlistenDone = await listen<{ valid_links: LinkItem[] }>(
+      "validation-done",
+      (event) => {
+        setLinks(event.payload.valid_links);
+        setCheckedUrls(new Map());
+        setValidating(false);
+        setSelected(new Set());
+        refreshHistory();
+        // Clean up listeners
+        for (const unlisten of unlistenRefs.current) unlisten();
+        unlistenRefs.current = [];
+        // Clear active status so idle info shows
+        setStatus(null);
+      },
+    );
     unlistenRefs.current.push(unlistenDone);
 
     try {
