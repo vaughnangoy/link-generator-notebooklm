@@ -1,16 +1,19 @@
 interface UrlInputProps {
+  value: string;
+  onChange: (value: string) => void;
   onExtract: (url: string) => void;
   loading: boolean;
 }
 
-import { useState } from "react";
-
-export default function UrlInput({ onExtract, loading }: UrlInputProps) {
-  const [url, setUrl] = useState("");
-
+export default function UrlInput({
+  value,
+  onChange,
+  onExtract,
+  loading,
+}: UrlInputProps) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const trimmed = url.trim();
+    const trimmed = value.trim();
     if (trimmed) {
       onExtract(trimmed);
     }
@@ -20,12 +23,12 @@ export default function UrlInput({ onExtract, loading }: UrlInputProps) {
     <form className="url-input" onSubmit={handleSubmit}>
       <input
         type="text"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         placeholder="Paste a URL or YouTube playlist link…"
         disabled={loading}
       />
-      <button type="submit" disabled={loading || !url.trim()}>
+      <button type="submit" disabled={loading || !value.trim()}>
         {loading ? "Extracting…" : "Extract Links"}
       </button>
     </form>
