@@ -11,9 +11,13 @@ export interface HistoryChild {
   link_type: string;
 }
 
-export interface HistoryEntry {
+export interface HistorySnapshot {
   id: number;
-  url: string;
   timestamp: number;
   children: HistoryChild[];
+}
+
+export interface HistoryGroup {
+  url: string;
+  snapshots: HistorySnapshot[];
 }

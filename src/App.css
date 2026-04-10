@@ -461,7 +461,6 @@
 .history-master-title {
   background: none;
   border: none;
-  cursor: pointer;
   text-align: left;
   flex: 1;
   display: flex;
@@ -479,10 +478,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
-}
-
-.history-master-title:hover .history-item-url {
-  text-decoration: underline;
 }
 
 .history-item-meta {
@@ -505,6 +500,55 @@
 }
 
 /* ── History children (sub-links) ── */
+.history-snapshots {
+  list-style: none;
+  padding-left: 28px;
+}
+
+.history-snapshot {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.history-snapshot:last-child {
+  border-bottom: none;
+}
+
+.history-snapshot-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  transition: background 0.15s;
+}
+
+.history-snapshot-row:hover {
+  background: #f5f7fa;
+}
+
+.history-snapshot-title {
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+  min-width: 0;
+}
+
+.history-snapshot-title:hover .history-snapshot-date {
+  text-decoration: underline;
+}
+
+.history-snapshot-date {
+  font-size: 12px;
+  color: #555;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .history-children {
   list-style: none;
   padding-left: 44px;
@@ -696,6 +740,18 @@
   .history-collapse-btn:hover {
     background: #3a3a3c;
     color: #f0f0f0;
+  }
+
+  .history-snapshot {
+    border-bottom-color: #3a3a3c;
+  }
+
+  .history-snapshot-row:hover {
+    background: #3a3a3c;
+  }
+
+  .history-snapshot-date {
+    color: #ccc;
   }
 
   .history-child-title {

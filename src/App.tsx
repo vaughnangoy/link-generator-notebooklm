@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import "./App.css";
-import { LinkItem, HistoryEntry } from "./types";
+import { LinkItem, HistoryGroup, HistorySnapshot } from "./types";
 import UrlInput from "./components/UrlInput";
 import LinkList from "./components/LinkList";
 import Preview from "./components/Preview";
@@ -34,8 +34,9 @@ function App() {
   const unlistenRefs = useRef<UnlistenFn[]>([]);
 
   // History state
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [selectedMasters, setSelectedMasters] = useState<Set<number>>(
+  const [history, setHistory] = useState<HistoryGroup[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
+  const [selectedSnapshots, setSelectedSnapshots] = useState<Set<number>>(
     new Set(),
   );
   const [selectedChildren, setSelectedChildren] = useState<
@@ -44,8 +45,8 @@ function App() {
 
   const refreshHistory = useCallback(async () => {
     try {
-      const entries = await invoke<HistoryEntry[]>("get_history");
-      setHistory(entries);
+      const groups = await invoke<HistoryGroup[]>("get_history");
+      setHistory(groups);
     } catch (e) {
       console.error("Failed to load history:", e);
     }
@@ -128,18 +129,25 @@ function App() {
     }
   }
 
-  async function handleHistoryClick(entry: HistoryEntry) {
-    setUrlInput(entry.url);
+  async function handleSnapshotClick(snapshot: HistorySnapshot, url: string) {
+    // Clean up any in-progress validation listeners
+    for (const unlisten of unlistenRefs.current) unlisten();
+    unlistenRefs.current = [];
+
+    setUrlInput(url);
     setLoading(true);
     setError(null);
     setActiveTab("links");
     setSelected(new Set());
     setPreviewIndex(null);
+    setValidating(false);
+    setCheckedUrls(new Map());
+    setStatus(null);
 
     try {
       // Load from DB — bypass content validation
       const result = await invoke<LinkItem[]>("load_history_links", {
-        masterId: entry.id,
+        masterId: snapshot.id,
       });
       setLinks(result);
     } catch (e) {
@@ -176,67 +184,114 @@ function App() {
 
   // ── History selection ──
 
-  function handleToggleMaster(masterId: number) {
-    setSelectedMasters((prev) => {
+  function handleToggleGroup(url: string) {
+    setSelectedGroups((prev) => {
       const next = new Set(prev);
-      if (next.has(masterId)) {
-        next.delete(masterId);
-        // Also clear child selections for this master
-        setSelectedChildren((pc) => {
-          const nc = new Map(pc);
-          nc.delete(masterId);
-          return nc;
-        });
+      if (next.has(url)) {
+        next.delete(url);
+        // Also clear snapshot/child selections for this group's snapshots
+        const group = history.find((g) => g.url === url);
+        if (group) {
+          setSelectedSnapshots((ps) => {
+            const ns = new Set(ps);
+            for (const snap of group.snapshots) ns.delete(snap.id);
+            return ns;
+          });
+          setSelectedChildren((pc) => {
+            const nc = new Map(pc);
+            for (const snap of group.snapshots) nc.delete(snap.id);
+            return nc;
+          });
+        }
       } else {
-        next.add(masterId);
+        next.add(url);
       }
       return next;
     });
   }
 
-  function handleToggleChild(masterId: number, childIndex: number) {
+  function handleToggleSnapshot(snapshotId: number) {
+    setSelectedSnapshots((prev) => {
+      const next = new Set(prev);
+      if (next.has(snapshotId)) {
+        next.delete(snapshotId);
+        setSelectedChildren((pc) => {
+          const nc = new Map(pc);
+          nc.delete(snapshotId);
+          return nc;
+        });
+      } else {
+        next.add(snapshotId);
+      }
+      return next;
+    });
+  }
+
+  function handleToggleChild(snapshotId: number, childIndex: number) {
     setSelectedChildren((prev) => {
       const next = new Map(prev);
-      const childSet = new Set(next.get(masterId) ?? []);
+      const childSet = new Set(next.get(snapshotId) ?? []);
       if (childSet.has(childIndex)) {
         childSet.delete(childIndex);
       } else {
         childSet.add(childIndex);
       }
       if (childSet.size === 0) {
-        next.delete(masterId);
+        next.delete(snapshotId);
       } else {
-        next.set(masterId, childSet);
+        next.set(snapshotId, childSet);
       }
       return next;
     });
   }
 
   function handleHistoryToggleAll() {
-    const allIds = history.map((e) => e.id);
-    const allSelected = allIds.every((id) => selectedMasters.has(id));
+    const allUrls = history.map((g) => g.url);
+    const allSelected = allUrls.every((url) => selectedGroups.has(url));
     if (allSelected) {
-      setSelectedMasters(new Set());
+      setSelectedGroups(new Set());
+      setSelectedSnapshots(new Set());
       setSelectedChildren(new Map());
     } else {
-      setSelectedMasters(new Set(allIds));
+      setSelectedGroups(new Set(allUrls));
+      setSelectedSnapshots(new Set());
       setSelectedChildren(new Map());
     }
   }
 
   async function handleHistoryDelete() {
-    const idsToDelete = Array.from(selectedMasters);
+    // Collect all snapshot IDs from selected groups + individually selected snapshots
+    const idsToDelete: number[] = [];
+    for (const group of history) {
+      if (selectedGroups.has(group.url)) {
+        for (const snap of group.snapshots) idsToDelete.push(snap.id);
+      } else {
+        for (const snap of group.snapshots) {
+          if (selectedSnapshots.has(snap.id)) idsToDelete.push(snap.id);
+        }
+      }
+    }
     if (idsToDelete.length === 0) return;
 
     try {
       await invoke("delete_history_entries", { masterIds: idsToDelete });
-      setSelectedMasters(new Set());
+      setSelectedGroups(new Set());
+      setSelectedSnapshots(new Set());
       setSelectedChildren(new Map());
       await refreshHistory();
     } catch (e) {
       setError(String(e));
     }
   }
+
+  // During validation: show all candidates (skeleton for unchecked, real for valid, hidden for invalid)
+  // After validation: show final links
+  const displayLinks = validating
+    ? links.filter((l) => {
+        const result = checkedUrls.get(l.url);
+        return result === undefined || result === true; // unchecked or valid
+      })
+    : links;
 
   // Collect URLs based on active tab
   const selectedUrls =
@@ -249,31 +304,27 @@ function App() {
 
   function getHistorySelectedUrls(): string[] {
     const urls: string[] = [];
-    for (const entry of history) {
-      if (selectedMasters.has(entry.id)) {
-        // Master selected → include all child URLs
-        for (const child of entry.children) urls.push(child.url);
+    for (const group of history) {
+      if (selectedGroups.has(group.url)) {
+        for (const snap of group.snapshots)
+          for (const child of snap.children) urls.push(child.url);
       } else {
-        // Check individual child selections
-        const childSet = selectedChildren.get(entry.id);
-        if (childSet) {
-          for (const ci of childSet) {
-            if (entry.children[ci]) urls.push(entry.children[ci].url);
+        for (const snap of group.snapshots) {
+          if (selectedSnapshots.has(snap.id)) {
+            for (const child of snap.children) urls.push(child.url);
+          } else {
+            const childSet = selectedChildren.get(snap.id);
+            if (childSet) {
+              for (const ci of childSet) {
+                if (snap.children[ci]) urls.push(snap.children[ci].url);
+              }
+            }
           }
         }
       }
     }
     return urls;
   }
-
-  // During validation: show all candidates (skeleton for unchecked, real for valid, hidden for invalid)
-  // After validation: show final links
-  const displayLinks = validating
-    ? links.filter((l) => {
-        const result = checkedUrls.get(l.url);
-        return result === undefined || result === true; // unchecked or valid
-      })
-    : links;
 
   const previewLink =
     previewIndex !== null ? (displayLinks[previewIndex] ?? null) : null;
@@ -331,14 +382,16 @@ function App() {
         <div className="main-content">
           <div className="history-panel">
             <HistoryList
-              entries={history}
-              selectedMasters={selectedMasters}
+              groups={history}
+              selectedGroups={selectedGroups}
+              selectedSnapshots={selectedSnapshots}
               selectedChildren={selectedChildren}
-              onToggleMaster={handleToggleMaster}
+              onToggleGroup={handleToggleGroup}
+              onToggleSnapshot={handleToggleSnapshot}
               onToggleChild={handleToggleChild}
               onToggleAll={handleHistoryToggleAll}
               onDelete={handleHistoryDelete}
-              onClickMaster={handleHistoryClick}
+              onClickSnapshot={handleSnapshotClick}
             />
           </div>
         </div>
@@ -372,7 +425,7 @@ function App() {
                 ? displayLinks.length > 0
                   ? `${displayLinks.length} link${displayLinks.length !== 1 ? "s" : ""}`
                   : "Ready"
-                : `${history.length} history entr${history.length !== 1 ? "ies" : "y"}`}
+                : `${history.length} URL${history.length !== 1 ? "s" : ""} in history`}
             </span>
             {activeTab === "links" && selected.size > 0 && (
               <span className="status-found">{selected.size} selected</span>

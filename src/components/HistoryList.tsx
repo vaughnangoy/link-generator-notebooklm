@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { HistoryEntry } from "../types";
+import { HistoryGroup, HistorySnapshot } from "../types";
 
 interface HistoryListProps {
-  entries: HistoryEntry[];
-  selectedMasters: Set<number>;
+  groups: HistoryGroup[];
+  selectedGroups: Set<string>;
+  selectedSnapshots: Set<number>;
   selectedChildren: Map<number, Set<number>>;
-  onToggleMaster: (masterId: number) => void;
-  onToggleChild: (masterId: number, childIndex: number) => void;
+  onToggleGroup: (url: string) => void;
+  onToggleSnapshot: (snapshotId: number) => void;
+  onToggleChild: (snapshotId: number, childIndex: number) => void;
   onToggleAll: () => void;
   onDelete: () => void;
-  onClickMaster: (entry: HistoryEntry) => void;
+  onClickSnapshot: (snapshot: HistorySnapshot, url: string) => void;
 }
 
 function formatRelativeTime(timestamp: number): string {
@@ -21,13 +23,21 @@ function formatRelativeTime(timestamp: number): string {
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(timestamp).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: days > 365 ? "numeric" : undefined,
-  });
+  const d = new Date(timestamp);
+  const now_date = new Date();
+  const sameYear = d.getFullYear() === now_date.getFullYear();
+  return (
+    d.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: sameYear ? undefined : "numeric",
+    }) +
+    ", " +
+    d.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    })
+  );
 }
 
 function formatFullDate(timestamp: number): string {
@@ -35,18 +45,25 @@ function formatFullDate(timestamp: number): string {
 }
 
 export default function HistoryList({
-  entries,
-  selectedMasters,
+  groups,
+  selectedGroups,
+  selectedSnapshots,
   selectedChildren,
-  onToggleMaster,
+  onToggleGroup,
+  onToggleSnapshot,
   onToggleChild,
   onToggleAll,
   onDelete,
-  onClickMaster,
+  onClickSnapshot,
 }: HistoryListProps) {
-  const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set(),
+  );
+  const [collapsedSnapshots, setCollapsedSnapshots] = useState<Set<number>>(
+    new Set(),
+  );
 
-  if (entries.length === 0) {
+  if (groups.length === 0) {
     return (
       <div className="history-empty">
         <p>No history yet. Extract links from a URL to build your history.</p>
@@ -54,41 +71,82 @@ export default function HistoryList({
     );
   }
 
-  const allMasterIds = entries.map((e) => e.id);
-  const allSelected = allMasterIds.every((id) => selectedMasters.has(id));
+  const allGroupUrls = groups.map((g) => g.url);
+  const allSelected = allGroupUrls.every((url) => selectedGroups.has(url));
 
+  // Count total selected URLs across all levels
   const totalSelectedUrls = (() => {
     let count = 0;
-    for (const entry of entries) {
-      if (selectedMasters.has(entry.id)) {
-        count += entry.children.length;
+    for (const group of groups) {
+      if (selectedGroups.has(group.url)) {
+        for (const snap of group.snapshots) count += snap.children.length;
       } else {
-        const childSet = selectedChildren.get(entry.id);
-        if (childSet) count += childSet.size;
+        for (const snap of group.snapshots) {
+          if (selectedSnapshots.has(snap.id)) {
+            count += snap.children.length;
+          } else {
+            const childSet = selectedChildren.get(snap.id);
+            if (childSet) count += childSet.size;
+          }
+        }
       }
     }
     return count;
   })();
 
-  function toggleCollapse(masterId: number) {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(masterId)) {
-        next.delete(masterId);
+  // Count deletable snapshot IDs (from selected groups + individually selected snapshots)
+  const deletableSnapshotIds = (() => {
+    const ids = new Set<number>();
+    for (const group of groups) {
+      if (selectedGroups.has(group.url)) {
+        for (const snap of group.snapshots) ids.add(snap.id);
       } else {
-        next.add(masterId);
+        for (const snap of group.snapshots) {
+          if (selectedSnapshots.has(snap.id)) ids.add(snap.id);
+        }
       }
+    }
+    return ids;
+  })();
+
+  function toggleGroupCollapse(url: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(url)) next.delete(url);
+      else next.add(url);
       return next;
     });
   }
 
-  function isMasterChecked(entry: HistoryEntry): boolean {
-    return selectedMasters.has(entry.id);
+  function toggleSnapshotCollapse(id: number) {
+    setCollapsedSnapshots((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
-  function isChildChecked(masterId: number, childIndex: number): boolean {
-    if (selectedMasters.has(masterId)) return true;
-    return selectedChildren.get(masterId)?.has(childIndex) ?? false;
+  function isGroupChecked(url: string): boolean {
+    return selectedGroups.has(url);
+  }
+
+  function isSnapshotChecked(
+    group: HistoryGroup,
+    snap: HistorySnapshot,
+  ): boolean {
+    if (selectedGroups.has(group.url)) return true;
+    return selectedSnapshots.has(snap.id);
+  }
+
+  function isChildChecked(
+    group: HistoryGroup,
+    snap: HistorySnapshot,
+    childIndex: number,
+  ): boolean {
+    if (selectedGroups.has(group.url)) return true;
+    if (selectedSnapshots.has(snap.id)) return true;
+    return selectedChildren.get(snap.id)?.has(childIndex) ?? false;
   }
 
   return (
@@ -105,74 +163,113 @@ export default function HistoryList({
               selected
             </span>
           )}
-          {selectedMasters.size > 0 && (
+          {deletableSnapshotIds.size > 0 && (
             <button className="history-delete-btn" onClick={onDelete}>
-              Delete {selectedMasters.size} entr
-              {selectedMasters.size !== 1 ? "ies" : "y"}
+              Delete {deletableSnapshotIds.size} snapshot
+              {deletableSnapshotIds.size !== 1 ? "s" : ""}
             </button>
           )}
         </div>
       </div>
       <ul className="history-tree">
-        {entries.map((entry) => {
-          const isCollapsed = collapsed.has(entry.id);
-          const masterChecked = isMasterChecked(entry);
+        {groups.map((group) => {
+          const isGroupCollapsed = collapsedGroups.has(group.url);
+          const groupChecked = isGroupChecked(group.url);
+          const totalLinks = group.snapshots.reduce(
+            (s, sn) => s + sn.children.length,
+            0,
+          );
           return (
-            <li key={entry.id} className="history-master">
+            <li key={group.url} className="history-master">
               <div className="history-master-row">
                 <button
                   className="history-collapse-btn"
-                  onClick={() => toggleCollapse(entry.id)}
-                  title={isCollapsed ? "Expand" : "Collapse"}
+                  onClick={() => toggleGroupCollapse(group.url)}
+                  title={isGroupCollapsed ? "Expand" : "Collapse"}
                 >
-                  {isCollapsed ? "▶" : "▼"}
+                  {isGroupCollapsed ? "▶" : "▼"}
                 </button>
                 <label className="history-checkbox">
                   <input
                     type="checkbox"
-                    checked={masterChecked}
-                    onChange={() => onToggleMaster(entry.id)}
+                    checked={groupChecked}
+                    onChange={() => onToggleGroup(group.url)}
                   />
                 </label>
-                <button
-                  className="history-master-title"
-                  onClick={() => onClickMaster(entry)}
-                  title={entry.url}
-                >
-                  <span className="history-item-url">{entry.url}</span>
+                <span className="history-master-title" title={group.url}>
+                  <span className="history-item-url">{group.url}</span>
                   <span className="history-item-meta">
                     <span className="history-item-count">
-                      {entry.children.length} link
-                      {entry.children.length !== 1 ? "s" : ""}
-                    </span>
-                    <span
-                      className="history-item-date"
-                      title={formatFullDate(entry.timestamp)}
-                    >
-                      {formatRelativeTime(entry.timestamp)}
+                      {group.snapshots.length} run
+                      {group.snapshots.length !== 1 ? "s" : ""} · {totalLinks}{" "}
+                      link{totalLinks !== 1 ? "s" : ""}
                     </span>
                   </span>
-                </button>
+                </span>
               </div>
-              {!isCollapsed && entry.children.length > 0 && (
-                <ul className="history-children">
-                  {entry.children.map((child, ci) => (
-                    <li key={child.id} className="history-child-row">
-                      <label className="history-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={isChildChecked(entry.id, ci)}
-                          onChange={() => onToggleChild(entry.id, ci)}
-                        />
-                      </label>
-                      <span className="history-child-title" title={child.url}>
-                        <span className="link-type-badge">
-                          {child.link_type === "youtube" ? "▶" : "🔗"}
-                        </span>
-                        {child.title}
-                      </span>
-                    </li>
-                  ))}
+              {!isGroupCollapsed && (
+                <ul className="history-snapshots">
+                  {group.snapshots.map((snap) => {
+                    const isSnapCollapsed = collapsedSnapshots.has(snap.id);
+                    const snapChecked = isSnapshotChecked(group, snap);
+                    return (
+                      <li key={snap.id} className="history-snapshot">
+                        <div className="history-snapshot-row">
+                          <button
+                            className="history-collapse-btn"
+                            onClick={() => toggleSnapshotCollapse(snap.id)}
+                            title={isSnapCollapsed ? "Expand" : "Collapse"}
+                          >
+                            {isSnapCollapsed ? "▶" : "▼"}
+                          </button>
+                          <label className="history-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={snapChecked}
+                              onChange={() => onToggleSnapshot(snap.id)}
+                            />
+                          </label>
+                          <button
+                            className="history-snapshot-title"
+                            onClick={() => onClickSnapshot(snap, group.url)}
+                            title={formatFullDate(snap.timestamp)}
+                          >
+                            <span className="history-snapshot-date">
+                              {formatRelativeTime(snap.timestamp)}
+                            </span>
+                            <span className="history-item-count">
+                              {snap.children.length} link
+                              {snap.children.length !== 1 ? "s" : ""}
+                            </span>
+                          </button>
+                        </div>
+                        {!isSnapCollapsed && snap.children.length > 0 && (
+                          <ul className="history-children">
+                            {snap.children.map((child, ci) => (
+                              <li key={child.id} className="history-child-row">
+                                <label className="history-checkbox">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChildChecked(group, snap, ci)}
+                                    onChange={() => onToggleChild(snap.id, ci)}
+                                  />
+                                </label>
+                                <span
+                                  className="history-child-title"
+                                  title={child.url}
+                                >
+                                  <span className="link-type-badge">
+                                    {child.link_type === "youtube" ? "▶" : "🔗"}
+                                  </span>
+                                  {child.title}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </li>

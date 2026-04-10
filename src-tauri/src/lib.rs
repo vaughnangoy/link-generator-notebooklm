@@ -17,9 +17,14 @@ pub struct LinkItem {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct HistoryEntry {
-    pub id: i64,
+pub struct HistoryGroup {
     pub url: String,
+    pub snapshots: Vec<HistorySnapshot>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct HistorySnapshot {
+    pub id: i64,
     pub timestamp: i64,
     pub children: Vec<HistoryChild>,
 }
@@ -513,13 +518,8 @@ fn validate_links(
             checked: total, total, found: all_valid.len(),
         });
 
-        let _ = app.emit("validation-done", ValidationDone {
-            valid_links: all_valid.clone(),
-        });
-
-        // Store in DB
+        // Store in DB BEFORE emitting validation-done so refreshHistory() sees the data
         if let Ok(conn) = Connection::open(&db_path) {
-            let _ = conn.execute("DELETE FROM master_links WHERE url = ?1", [&url]);
 
             let timestamp = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -539,13 +539,17 @@ fn validate_links(
                 );
             }
         }
+
+        let _ = app.emit("validation-done", ValidationDone {
+            valid_links: all_valid.clone(),
+        });
     });
 
     Ok(())
 }
 
 #[tauri::command]
-fn get_history(db: tauri::State<'_, DbState>) -> Result<Vec<HistoryEntry>, String> {
+fn get_history(db: tauri::State<'_, DbState>) -> Result<Vec<HistoryGroup>, String> {
     let conn = db.0.lock().map_err(|e| format!("DB lock error: {}", e))?;
 
     let mut stmt = conn
@@ -558,7 +562,10 @@ fn get_history(db: tauri::State<'_, DbState>) -> Result<Vec<HistoryEntry>, Strin
         .filter_map(|r| r.ok())
         .collect();
 
-    let mut entries = Vec::new();
+    // Group by URL, preserving order (most recent URL group first)
+    let mut group_map: std::collections::HashMap<String, Vec<HistorySnapshot>> = std::collections::HashMap::new();
+    let mut url_order: Vec<String> = Vec::new();
+
     for (id, url, timestamp) in masters {
         let mut child_stmt = conn
             .prepare("SELECT id, title, url, link_type FROM sub_links WHERE master_id = ?1 ORDER BY id")
@@ -577,15 +584,23 @@ fn get_history(db: tauri::State<'_, DbState>) -> Result<Vec<HistoryEntry>, Strin
             .filter_map(|r| r.ok())
             .collect();
 
-        entries.push(HistoryEntry {
+        if !group_map.contains_key(&url) {
+            url_order.push(url.clone());
+        }
+
+        group_map.entry(url.clone()).or_default().push(HistorySnapshot {
             id,
-            url,
             timestamp,
             children,
         });
     }
 
-    Ok(entries)
+    let groups = url_order.into_iter().map(|url| {
+        let snapshots = group_map.remove(&url).unwrap_or_default();
+        HistoryGroup { url, snapshots }
+    }).collect();
+
+    Ok(groups)
 }
 
 #[tauri::command]
@@ -636,6 +651,20 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            let app_handle = app.handle().clone();
+
+            // Helper to update splash screen status text
+            fn set_splash(app: &tauri::AppHandle, msg: &str, ready: bool) {
+                if let Some(splash) = app.get_webview_window("splash") {
+                    let escaped = msg.replace('\'', "\\'");
+                    let _ = splash.eval(&format!(
+                        "updateStatus('{}', {})", escaped, ready
+                    ));
+                }
+            }
+
+            set_splash(&app_handle, "Initializing database…", false);
+
             let db_path = app
                 .path()
                 .app_data_dir()
@@ -645,6 +674,44 @@ pub fn run() {
             let conn = Connection::open(db_file).expect("Failed to open database");
             init_db(&conn);
             app.manage(DbState(Mutex::new(conn)));
+
+            // Verify networking in background, then show main window
+            let app_handle2 = app_handle.clone();
+            std::thread::spawn(move || {
+                // Give splash a moment to render
+                std::thread::sleep(std::time::Duration::from_millis(500));
+
+                set_splash(&app_handle2, "Checking network connectivity…", false);
+
+                // Verify TLS/HTTPS works by making a lightweight HEAD request
+                let net_ok = match build_client() {
+                    Ok(client) => {
+                        client.head("https://www.google.com")
+                            .timeout(std::time::Duration::from_secs(5))
+                            .send()
+                            .is_ok()
+                    }
+                    Err(_) => false,
+                };
+
+                if net_ok {
+                    set_splash(&app_handle2, "Ready!", true);
+                } else {
+                    set_splash(&app_handle2, "Network unavailable — starting in offline mode", true);
+                }
+
+                // Pause so the user sees the ready status
+                std::thread::sleep(std::time::Duration::from_millis(800));
+
+                if let Some(splash) = app_handle2.get_webview_window("splash") {
+                    let _ = splash.close();
+                }
+                if let Some(main) = app_handle2.get_webview_window("main") {
+                    let _ = main.show();
+                    let _ = main.set_focus();
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

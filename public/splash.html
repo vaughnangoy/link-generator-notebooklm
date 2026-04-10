@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loading</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0d0f1a;
+      }
+      .splash {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      .splash img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .splash-footer {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 24px;
+      }
+      .status-text {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.7);
+        text-align: center;
+        letter-spacing: 0.3px;
+        transition: opacity 0.3s ease;
+      }
+      .loading-bar-container {
+        width: 200px;
+        height: 3px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .loading-bar {
+        height: 100%;
+        width: 40%;
+        background: linear-gradient(90deg, #60a5fa, #a78bfa);
+        border-radius: 2px;
+        animation: slide 1.2s ease-in-out infinite;
+      }
+      .loading-bar.done {
+        width: 100%;
+        animation: none;
+        transition: width 0.4s ease;
+      }
+      @keyframes slide {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(350%);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="splash">
+      <img src="splash.png" alt="Link Generator for NotebookLM" />
+      <div class="splash-footer">
+        <div id="status" class="status-text">Starting up…</div>
+        <div class="loading-bar-container">
+          <div id="bar" class="loading-bar"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      // Status is updated by Rust via webview.eval("updateStatus('message', ready)")
+      function updateStatus(message, ready) {
+        document.getElementById("status").textContent = message;
+        if (ready) {
+          document.getElementById("bar").classList.add("done");
+        }
+      }
+    </script>
+  </body>
+</html>

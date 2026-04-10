@@ -12,13 +12,26 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Link Generator for NotebookLM",
         "width": 1200,
-        "height": 800
+        "height": 800,
+        "visible": false
+      },
+      {
+        "label": "splash",
+        "title": "Link Generator for NotebookLM",
+        "url": "splash.html",
+        "width": 720,
+        "height": 420,
+        "decorations": false,
+        "resizable": false,
+        "center": true,
+        "transparent": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src ipc: http://ipc.localhost"
     }
   },
   "bundle": {
