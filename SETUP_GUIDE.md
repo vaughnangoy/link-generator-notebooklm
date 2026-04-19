@@ -20,13 +20,14 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 ```
 
 Verify Homebrew is installed:
+
 ```bash
 brew --version
 ```
 
 ### Step 2: Install Xcode Command Line Tools
 
-Required for compiling Rust and native dependencies.
+Required for compiling Rust and native dependencies. This also includes Git.
 
 ```bash
 xcode-select --install
@@ -35,9 +36,13 @@ xcode-select --install
 A dialog will appear - click **Install** and accept the license agreement. This may take several minutes.
 
 Verify installation:
+
 ```bash
 xcode-select -p
 # Should output: /Library/Developer/CommandLineTools
+
+git --version
+# Should output: git version 2.x.x
 ```
 
 ### Step 3: Install Rust
@@ -51,11 +56,13 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 When prompted, select option **1** (default installation).
 
 After installation, reload your shell configuration:
+
 ```bash
 source $HOME/.cargo/env
 ```
 
 Verify Rust is installed:
+
 ```bash
 rustc --version
 cargo --version
@@ -70,24 +77,28 @@ brew install node
 ```
 
 Verify installation:
+
 ```bash
 node --version
 npm --version
 ```
 
 **Alternative:** If you prefer using a Node version manager like `nvm`:
+
 ```bash
 brew install nvm
 mkdir ~/.nvm
 ```
 
 Then add to your `~/.zshrc`:
+
 ```bash
 export NVM_DIR="$HOME/.nvm"
 [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
 ```
 
 Reload shell and install Node:
+
 ```bash
 source ~/.zshrc
 nvm install --lts
@@ -112,11 +123,13 @@ cd link-generator-notebooklm-PERSONAL
 ### Step 6: Install Project Dependencies
 
 Install Node.js dependencies:
+
 ```bash
 npm install
 ```
 
 This will install:
+
 - React and React DOM
 - Tauri API and plugins
 - TypeScript and build tools
@@ -145,6 +158,7 @@ npm run tauri build
 ```
 
 The compiled app will be output to:
+
 ```
 src-tauri/target/release/bundle/macos/Link Generator for NotebookLM.app
 ```
@@ -152,6 +166,7 @@ src-tauri/target/release/bundle/macos/Link Generator for NotebookLM.app
 #### Installing the Production Build
 
 1. **Copy to Applications:**
+
    ```bash
    cp -r "src-tauri/target/release/bundle/macos/Link Generator for NotebookLM.app" /Applications/
    ```
@@ -162,6 +177,7 @@ src-tauri/target/release/bundle/macos/Link Generator for NotebookLM.app
    - Click **Open** in the security dialog
 
    Alternatively, from the command line:
+
    ```bash
    open "/Applications/Link Generator for NotebookLM.app"
    ```
@@ -171,6 +187,7 @@ src-tauri/target/release/bundle/macos/Link Generator for NotebookLM.app
 ### Command Not Found Errors
 
 If you get "command not found" errors after installing Rust or Node:
+
 ```bash
 # Reload your shell configuration
 source ~/.zshrc
@@ -181,6 +198,7 @@ exec zsh
 ### Rust Compilation Errors
 
 If you encounter Rust compilation errors:
+
 ```bash
 # Update Rust to the latest version
 rustup update
@@ -195,6 +213,7 @@ npm run tauri dev
 ### Node/npm Permission Errors
 
 If you get permission errors with npm:
+
 ```bash
 # Fix npm permissions
 sudo chown -R $(whoami) ~/.npm
@@ -203,6 +222,7 @@ sudo chown -R $(whoami) ~/.npm
 ### Port Already in Use
 
 If the Vite dev server port (usually 1420) is already in use:
+
 ```bash
 # Find and kill the process using the port
 lsof -ti:1420 | xargs kill -9
@@ -211,11 +231,13 @@ lsof -ti:1420 | xargs kill -9
 ### macOS Gatekeeper Blocks the App
 
 For unsigned apps, macOS Gatekeeper will block execution:
+
 1. Go to **System Settings** → **Privacy & Security**
 2. Scroll down to find the blocked app warning
 3. Click **Open Anyway**
 
 Or use the command line:
+
 ```bash
 xattr -cr "/Applications/Link Generator for NotebookLM.app"
 ```
@@ -240,6 +262,7 @@ xattr -cr "/Applications/Link Generator for NotebookLM.app"
 ## Next Steps
 
 After successful setup:
+
 1. Launch the app with `npm run tauri dev`
 2. Paste any URL into the input bar
 3. Press Enter or click Extract
@@ -255,6 +278,7 @@ Before running the app, verify all prerequisites are installed:
 
 - [ ] Homebrew installed: `brew --version`
 - [ ] Xcode Command Line Tools: `xcode-select -p`
+- [ ] Git installed: `git --version`
 - [ ] Rust installed: `rustc --version`
 - [ ] Cargo installed: `cargo --version`
 - [ ] Node.js installed: `node --version`
@@ -263,6 +287,7 @@ Before running the app, verify all prerequisites are installed:
 - [ ] Repository cloned and in project directory
 
 If all checks pass, you're ready to run:
+
 ```bash
 npm run tauri dev
 ```
